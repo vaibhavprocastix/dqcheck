@@ -1,6 +1,6 @@
 import pandas as pd
 from dqcheck import checks
-
+from dqcheck.scoring import score_dataset
 
 def run_all_checks(df: pd.DataFrame, target: str | None = None):
     report = {
@@ -25,4 +25,8 @@ def run_all_checks(df: pd.DataFrame, target: str | None = None):
     if target and target in df.columns:
         report["target"] = target
 
+    scores = score_dataset(df, report["issues"])
+    report["scores"] = scores
+
     return report
+
