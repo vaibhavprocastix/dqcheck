@@ -8,7 +8,13 @@ import numpy as np
 def check_missing_values(df: pd.DataFrame):
     results = []
     for col in df.columns:
-        missing_pct = df[col].isnull().mean() * 100
+        missing_pct = (
+            df[col]
+            .replace(r"^\s*$", np.nan, regex=True)
+            .isnull()
+            .mean() * 100
+        )
+
         if missing_pct > 0:
             results.append({
                 "column": col,
@@ -84,4 +90,36 @@ def check_outliers_iqr(df: pd.DataFrame):
                 "severity": "high" if outlier_pct > 10 else "low"
             })
 
+    return results
+
+
+def check_class_imbalance(df, target):
+    if target is None or target not in df.columns:
+        return None
+
+    value_counts = df[target].value_counts(normalize=True)
+    max_ratio = value_counts.max()
+
+    if max_ratio > 0.65:
+        return {
+            "issue": "class_imbalance",
+            "target": target,
+            "dominant_class_ratio": round(max_ratio * 100, 2),
+            "severity": "high"
+        }
+    return None
+
+
+def check_high_cardinality(df, threshold=50):
+    results = []
+    for col in df.select_dtypes(include="object").columns:
+        if col.lower().endswith("id"):
+            continue
+        if df[col].nunique() > threshold:
+            results.append({
+                "column": col,
+                "issue": "high_cardinality",
+                "unique_values": df[col].nunique(),
+                "severity": "medium"
+            })
     return results

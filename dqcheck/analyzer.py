@@ -21,12 +21,19 @@ def run_all_checks(df: pd.DataFrame, target: str | None = None):
     # Statistical checks
     report["issues"].extend(checks.check_outliers_iqr(df))
 
+    report["issues"].extend(checks.check_high_cardinality(df))
+
+
     # Target-related checks (placeholder for later)
     if target and target in df.columns:
         report["target"] = target
 
     scores = score_dataset(df, report["issues"])
     report["scores"] = scores
+
+    imbalance = checks.check_class_imbalance(df, target)
+    if imbalance:
+        report["issues"].append(imbalance)
 
     return report
 
