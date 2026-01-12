@@ -2,7 +2,7 @@ import click
 import pandas as pd
 from dqcheck.analyzer import run_all_checks
 from dqcheck.report import save_json_report, save_html_report
-from dqcheck.fixer import fix_missing_values
+from dqcheck.fixer import fix_missing_values,fix_outliers
 
 
 @click.group()
@@ -50,9 +50,16 @@ def analyze(data_path, target, report):
 def fix(data_path, issue, method, value):
     """Fix specific data quality issues (explicit user request only)."""
 
-    if issue != "missing_values":
-        click.echo("❌ Only missing_values fixing is supported for now.")
+    if issue == "missing_values":
+        cleaned_df, log = fix_missing_values(df, method, value)
+
+    elif issue == "outliers":
+        cleaned_df, log = fix_outliers(df, method, value)
+
+    else:
+        click.echo("❌ Unsupported issue type.")
         return
+
 
     df = pd.read_csv(data_path)
 
