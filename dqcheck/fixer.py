@@ -239,3 +239,78 @@ def fix_errors(df: pd.DataFrame, method: str, value=None):
         return cleaned_df, change_log
 
     return cleaned_df, change_log
+
+
+def fix_high_cardinality(df: pd.DataFrame, method: str, value=None, target=None):
+    """
+    Fix high-cardinality categorical features using explicit user-selected methods.
+    Returns cleaned dataframe and change log.
+    """
+    cleaned_df = df.copy()
+    change_log = []
+
+    categorical_cols = cleaned_df.select_dtypes(include="object").columns
+
+    for col in categorical_cols:
+        unique_count = cleaned_df[col].nunique()
+
+        # Skip low-cardinality columns
+        if unique_count < 20:
+            continue
+
+        entry = {
+            "column": col,
+            "method": method,
+            "unique_before": int(unique_count)
+        }
+
+        # ---------- METHOD: DROP ----------
+        if method == "drop":
+            cleaned_df.drop(columns=[col], inplace=True)
+            entry["action"] = "column_dropped"
+
+        # ---------- METHOD: GROUP RARE ----------
+        elif method == "group_rare":
+            top_k = int(value) if value else 20
+            top_values = cleaned_df[col].value_counts().nlargest(top_k).index
+            cleaned_df[col] = cleaned_df[col].where(
+                cleaned_df[col].isin(top_values), "Other"
+            )
+            entry["kept_categories"] = top_k
+            entry["unique_after"] = cleaned_df[col].nunique()
+
+        # ---------- METHOD: FREQUENCY ENCODE ----------
+        elif method == "frequency_encode":
+            freq_map = cleaned_df[col].value_counts()
+            cleaned_df[col] = cleaned_df[col].map(freq_map)
+            entry["encoding"] = "frequency"
+
+        # ---------- METHOD: TARGET ENCODE ----------
+        elif method == "target_encode":
+            if target is None or target not in cleaned_df.columns:
+                continue
+            mean_map = cleaned_df.groupby(col)[target].mean()
+            cleaned_df[col] = cleaned_df[col].map(mean_map)
+            entry["encoding"] = "target_mean"
+
+        # ---------- METHOD: HASHING ----------
+        elif method == "hashing":
+            bins = int(value) if value else 16
+            cleaned_df[col] = cleaned_df[col].apply(
+                lambda x: hash(x) % bins
+            )
+            entry["bins"] = bins
+
+        # ---------- METHOD: EXTRACT FEATURES ----------
+        elif method == "extract_features":
+            # Works well for dates / codes
+            cleaned_df[f"{col}_length"] = cleaned_df[col].astype(str).str.len()
+            cleaned_df.drop(columns=[col], inplace=True)
+            entry["extracted"] = f"{col}_length"
+
+        else:
+            continue
+
+        change_log.append(entry)
+
+    return cleaned_df, change_log

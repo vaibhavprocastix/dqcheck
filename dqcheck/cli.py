@@ -2,7 +2,7 @@ import click
 import pandas as pd
 from dqcheck.analyzer import run_all_checks
 from dqcheck.report import save_json_report, save_html_report
-from dqcheck.fixer import fix_missing_values,fix_outliers,fix_errors
+from dqcheck.fixer import fix_missing_values,fix_outliers,fix_errors,fix_high_cardinality
 
 
 @click.group()
@@ -44,36 +44,42 @@ def analyze(data_path, target, report):
 
 @cli.command()
 @click.argument("data_path", type=click.Path(exists=True))
-@click.option("--issue", required=True, help="Issue to fix (e.g., missing_values)")
+@click.option("--issue", required=True,type=click.Choice(["missing_values", "outliers", "errors", "high_cardinality"]))
 @click.option("--method", required=True, help="Fixing method")
-@click.option("--value", default=None, help="Value for constant fill (optional)")
-def fix(data_path, issue, method, value):
+@click.option("--value", default=None, help="Optional value for the method")
+@click.option("--target", default=None, help="Target column (required for target encoding)")
+def fix(data_path, issue, method, value, target):
     """Fix specific data quality issues (explicit user request only)."""
 
+    click.echo(f"🛠 Fixing issue: {issue}")
+    df = pd.read_csv(data_path)
+
+    # Dispatch to correct fixer
     if issue == "missing_values":
         cleaned_df, log = fix_missing_values(df, method, value)
 
     elif issue == "outliers":
         cleaned_df, log = fix_outliers(df, method, value)
-    
+
     elif issue == "errors":
         cleaned_df, log = fix_errors(df, method, value)
+
+    elif issue == "high_cardinality":
+        cleaned_df, log = fix_high_cardinality(
+            df, method, value=value, target=target
+        )
 
     else:
         click.echo("❌ Unsupported issue type.")
         return
 
-
-    df = pd.read_csv(data_path)
-
-    click.echo("🛠 Fixing missing values...")
-    cleaned_df, log = fix_missing_values(df, method, value)
-
+    # Save outputs
     cleaned_df.to_csv("cleaned_data.csv", index=False)
 
-    with open("change_log.txt", "w") as f:
-        f.write(str(log))
+    import json
+    with open("change_log.json", "w") as f:
+        json.dump(log, f, indent=2)
 
-    click.echo("Cleaned data saved as cleaned_data.csv")
-    click.echo("Change log saved as change_log.txt")
+    click.echo("✅ Cleaned data saved as cleaned_data.csv")
+    click.echo("📜 Change log saved as change_log.json")
 
