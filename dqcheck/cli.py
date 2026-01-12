@@ -2,7 +2,7 @@ import click
 import pandas as pd
 from dqcheck.analyzer import run_all_checks
 from dqcheck.report import save_json_report, save_html_report
-from dqcheck.fixer import fix_missing_values,fix_outliers
+from dqcheck.fixer import fix_missing_values,fix_outliers,fix_errors
 
 
 @click.group()
@@ -55,6 +55,9 @@ def fix(data_path, issue, method, value):
 
     elif issue == "outliers":
         cleaned_df, log = fix_outliers(df, method, value)
+    
+    elif issue == "errors":
+        cleaned_df, log = fix_errors(df, method, value)
 
     else:
         click.echo("❌ Unsupported issue type.")

@@ -130,3 +130,112 @@ def fix_outliers(df: pd.DataFrame, method: str, value=None):
         change_log.append(entry)
 
     return cleaned_df, change_log
+
+
+def fix_errors(df: pd.DataFrame, method: str, value=None):
+    """
+    Fix invalid / inconsistent data values.
+    Returns cleaned dataframe and change log.
+    """
+    cleaned_df = df.copy()
+    change_log = []
+
+    # ---------- METHOD: RANGE CLIP ----------
+    if method == "range_clip":
+        # value format: column:min,max
+        col, min_val, max_val = value.split(":")
+        min_val, max_val = float(min_val), float(max_val)
+
+        invalid_mask = (cleaned_df[col] < min_val) | (cleaned_df[col] > max_val)
+        count = int(invalid_mask.sum())
+
+        cleaned_df.loc[cleaned_df[col] < min_val, col] = min_val
+        cleaned_df.loc[cleaned_df[col] > max_val, col] = max_val
+
+        change_log.append({
+            "column": col,
+            "method": "range_clip",
+            "invalid_before": count,
+            "range": f"{min_val}-{max_val}"
+        })
+
+    # ---------- METHOD: DROP INVALID ----------
+    elif method == "drop_invalid":
+        col, min_val = value.split(":")
+        min_val = float(min_val)
+
+        invalid_mask = cleaned_df[col] < min_val
+        count = int(invalid_mask.sum())
+
+        cleaned_df = cleaned_df[~invalid_mask]
+
+        change_log.append({
+            "column": col,
+            "method": "drop_invalid",
+            "rows_removed": count
+        })
+
+    # ---------- METHOD: CAST TYPE ----------
+    elif method == "cast_type":
+        # value format: column:type
+        col, dtype = value.split(":")
+
+        before_errors = cleaned_df[col].isnull().sum()
+
+        if dtype == "int":
+            cleaned_df[col] = pd.to_numeric(cleaned_df[col], errors="coerce").astype("Int64")
+        elif dtype == "float":
+            cleaned_df[col] = pd.to_numeric(cleaned_df[col], errors="coerce")
+        elif dtype == "string":
+            cleaned_df[col] = cleaned_df[col].astype(str)
+
+        after_errors = cleaned_df[col].isnull().sum()
+
+        change_log.append({
+            "column": col,
+            "method": "cast_type",
+            "type": dtype,
+            "nulls_after": int(after_errors)
+        })
+
+    # ---------- METHOD: STANDARDIZE TEXT ----------
+    elif method == "standardize_text":
+        # value format: column
+        col = value
+        cleaned_df[col] = cleaned_df[col].str.strip().str.lower()
+
+        change_log.append({
+            "column": col,
+            "method": "standardize_text"
+        })
+
+    # ---------- METHOD: REPLACE MAP ----------
+    elif method == "replace_map":
+        # value format: column:key1=val1,key2=val2
+        col, mappings = value.split(":")
+        replace_dict = dict(m.split("=") for m in mappings.split(","))
+
+        cleaned_df[col] = cleaned_df[col].replace(replace_dict)
+
+        change_log.append({
+            "column": col,
+            "method": "replace_map",
+            "mapping": replace_dict
+        })
+
+    # ---------- METHOD: REGEX CLEAN ----------
+    elif method == "regex_clean":
+        # value format: column:pattern
+        col, pattern = value.split(":")
+        cleaned_df[col] = cleaned_df[col].str.replace(pattern, "", regex=True)
+
+        change_log.append({
+            "column": col,
+            "method": "regex_clean",
+            "pattern": pattern
+        })
+
+    else:
+        return cleaned_df, change_log
+
+    return cleaned_df, change_log
