@@ -1,4 +1,4 @@
-import click
+import rich_click as click
 import pandas as pd
 from dqcheck.analyzer import run_all_checks
 from dqcheck.report import save_json_report, save_html_report
@@ -17,80 +17,64 @@ COMMANDS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 analyze
-  Analyze a dataset for data quality issues such as:
-  - missing values
-  - outliers
-  - class imbalance
-  - high-cardinality features
+    Analyze a dataset for data quality issues such as:
 
-  Usage:
-    dqcheck analyze data.csv --report=html
-    dqcheck analyze data.csv --report=json
-    dqcheck analyze data.csv --target=label --report=both
+        • missing values
+        • outliers
+        • class imbalance
+        • high-cardinality features
+
+    Usage:
+        dqcheck analyze data.csv --report=html
+        dqcheck analyze data.csv --report=json
+        dqcheck analyze data.csv --target=label --report=both
 
 fix
-  Fix specific data quality issues.
+    Fix specific data quality issues.
 
-  Supported issues & methods:
+    Supported issues & methods:
 
-  missing_values:
-    - drop : Remove rows that contain missing values.
+    missing_values:
+        drop             Remove rows that contain missing values
+        mean             Replace missing numbers with the average
+        median           Replace missing numbers with the middle value
+        mode             Replace missing values with the most frequent value
+        constant         Replace missing values with a fixed value
 
-    - mean : Replace missing numbers with the average value of the column.
+    outliers:
+        cap              Limit extreme values to a reasonable range
+        remove           Delete rows containing extreme values
+        log              Apply log transformation
+        clip_percentile  Cap values using percentile limits
+        zscore           Remove values far from the average
 
-    - median : Replace missing numbers with the middle value of the column.
+    errors:
+        range_clip       Force values into a valid range
+        drop_invalid     Remove rows with invalid values
+        cast_type        Convert values to correct data type
+        standardize_text Normalize text casing and spacing
+        replace_map      Replace known incorrect values
+        regex_clean      Clean values using patterns
 
-    - mode : Replace missing values with the most frequently occurring value.
+    high_cardinality:
+        drop             Remove ID-like columns
+        group_rare       Group rare categories into "Other"
+        frequency_encode Encode categories by frequency
+        target_encode    Encode using target mean
+        hashing          Hash categories into fixed bins
+        extract_features Derive simpler features
 
-    - constant : Replace missing values with a fixed user-defined value.
+    Usage:
+        dqcheck fix data.csv --issue=missing_values --method=median
+        dqcheck fix data.csv --issue=outliers --method=cap
+        dqcheck fix data.csv --issue=high_cardinality --method=group_rare --value=20
 
-  outliers:
-    - cap : Limit extreme values to a reasonable range instead of removing them.
-
-    - remove : Delete rows that contain unusually extreme values.
-
-    - log : Apply a logarithmic transformation to reduce the impact of large values.
-
-    - clip_percentile : Cap values based on lower and upper percentile limits.
-
-    - zscore : Remove values that are far away from the average based on standard deviation.
-
-  errors:
-    - range_clip : Force values to stay within a valid minimum and maximum range.
-
-    - drop_invalid : Remove rows that contain logically invalid values.
-
-    - cast_type : Convert values to the correct data type.
-
-    - standardize_text : Normalize text values by trimming spaces and fixing casing.
-
-    - replace_map : Replace known incorrect values with correct ones using a mapping.
-
-    - regex_clean : Clean values using pattern rules.
-
-  high_cardinality:
-    - drop : Remove columns that behave like identifiers and add no learning value.
-
-    - group_rare : Keep common categories and group rare ones into an “Other” category.
-
-    - frequency_encode : Replace categories with how often they appear in the dataset.
-
-    - target_encode : Replace categories with the average target value for each category.
-
-    - hashing : Convert categories into fixed numeric buckets using a hash function.
-
-    - extract_features: Derive simpler features from complex values.
-
-  Usage:
-    dqcheck fix data.csv --issue=missing_values --method=median
-    dqcheck fix data.csv --issue=outliers --method=cap
-    dqcheck fix data.csv --issue=high_cardinality --method=group_rare --value=20
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 )
 def cli():
     pass
+
 
 
 
@@ -104,7 +88,6 @@ def cli():
     help="Report format to generate"
 )
 def analyze(data_path, target, report):
-    """Analyze dataset for data quality issues."""
     click.echo(f"Loading dataset: {data_path}")
 
     df = pd.read_csv(data_path)
@@ -132,7 +115,6 @@ def analyze(data_path, target, report):
 @click.option("--value", default=None, help="Optional value for the method")
 @click.option("--target", default=None, help="Target column (required for target encoding)")
 def fix(data_path, issue, method, value, target):
-    """Fix specific data quality issues (explicit user request only)."""
 
     click.echo(f"🛠 Fixing issue: {issue}")
     df = pd.read_csv(data_path)
