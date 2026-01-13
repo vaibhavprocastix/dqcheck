@@ -36,7 +36,7 @@ before any ML model is trained.
 ## Installation
 
 ```bash
-git clone https://github.com/<your-username>/dqcheck.git
+git clone https://github.com/vaibhavprocastix/dqcheck.git
 cd dqcheck
 python3 -m venv venv
 source venv/bin/activate
